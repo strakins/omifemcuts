@@ -47,7 +47,7 @@ export default function Navbar() {
   ];
 
   // Check if a nav item is active
-  const isActive = (href, exactMatch = false) => {
+  const isActive = (href: string, exactMatch: boolean = false) => {
     if (exactMatch) {
       return pathname === href;
     }
