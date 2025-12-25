@@ -6,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Upload, X, Image as ImageIcon } from 'lucide-react';
-import { StyleCategory } from '@/types';
+import { Upload, X} from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const styleSchema = z.object({

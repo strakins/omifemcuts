@@ -999,12 +999,11 @@ export default function AdminDashboard() {
               {styles.map((style) => (
                 <div key={style.id} className="bg-white rounded-xl p-4 shadow-sm border border-gray-200">
                   <div className="flex items-start gap-4">
-                    <div className="relative w-24 h-24 flex-shrink-0">
+                    <div className="relative w-12 h-12 flex-shrink-0">
                       <img
                         src={style.imageUrl}
                         alt={style.title}
                         className="object-cover rounded-lg"
-                        sizes="100px"
                       />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1064,11 +1063,11 @@ export default function AdminDashboard() {
                       <tr key={style.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4">
                           <div className="flex items-center">
-                            <div className="relative w-16 h-16 flex-shrink-0">
+                            <div className="relative w-16 h-20 flex-shrink-0">
                               <img
                                 src={style.imageUrl}
                                 alt={style.title}
-                                className="object-cover rounded-lg"
+                                className="object-cover rounded-lg h-20 w-20"
                                 sizes="64px"
                               />
                             </div>
