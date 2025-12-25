@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Heart, Share2, Clock} from 'lucide-react';
+import { Heart, Share2, Clock, Package, PackageCheck } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { FashionStyle } from '@/types';
 import toast from 'react-hot-toast';
@@ -13,9 +13,10 @@ export default function StyleDetailPage() {
   const params = useParams();
   const { user } = useAuth();
   const [style, setStyle] = useState<FashionStyle | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(0);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [liked, setLiked] = useState<boolean>(false);
+  const [likesCount, setLikesCount] = useState<number>(0);
+  const [hasFabric, setHasFabric] = useState<boolean>(true); // Toggle state
 
   useEffect(() => {
     if (params.id) {
@@ -31,14 +32,13 @@ export default function StyleDetailPage() {
     }
   }, [user, style]);
 
-  const fetchStyle = async () => {
+  const fetchStyle = async (): Promise<void> => {
     try {
       const docRef = doc(db, 'styles', params.id as string);
       const docSnap = await getDoc(docRef);
       
       if (docSnap.exists()) {
         const data = docSnap.data();
-        console.log(data)
         
         // Ensure all fields are properly set
         const styleData: FashionStyle = {
@@ -50,7 +50,7 @@ export default function StyleDetailPage() {
           priceWithoutFabrics: data.priceWithoutFabrics,
           priceWithFabrics: data.priceWithFabrics,
           deliveryTime: data.deliveryTime || '7-14 days',
-          likes: Array.isArray(data.likes) ? data.likes.filter(Boolean) : [], // Filter out any null/undefined
+          likes: Array.isArray(data.likes) ? data.likes.filter(Boolean) : [],
           createdAt: data.createdAt || new Date(),
           updatedAt: data.updatedAt || new Date(),
           source: data.source || 'upload',
@@ -70,8 +70,7 @@ export default function StyleDetailPage() {
     }
   };
 
-  const handleLike = async () => {
-    // Check if user is logged in and has a valid ID
+  const handleLike = async (): Promise<void> => {
     if (!user || !user.id) {
       toast.error('Please login to like styles');
       return;
@@ -97,7 +96,7 @@ export default function StyleDetailPage() {
         } : null);
         toast.success('Removed from likes');
       } else {
-        // Add like - ensure we're passing a valid string
+        // Add like
         await updateDoc(styleRef, {
           likes: arrayUnion(user.id)
         });
@@ -117,20 +116,103 @@ export default function StyleDetailPage() {
     }
   };
 
-  const handleWhatsAppRedirect = () => {
+  const handleWhatsAppRedirect = (): void => {
     const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
+    
+    // Determine which price to show based on toggle
+    const priceValue = hasFabric 
+      ? (style?.priceWithFabrics?.toLocaleString() || 'TBD')
+      : (style?.priceWithoutFabrics?.toLocaleString() || 'TBD');
+    
+    const priceType = hasFabric ? 'with fabric included' : 'with your own fabric';
+    
     const message = encodeURIComponent(
       `Hello OmifemCuts, I'm interested in this style:\n\n` +
       `✨ *${style?.title}* ✨\n` +
       `${style?.description}\n\n` +
-      `💰 Price With Fabric: ₦${style?.priceWithFabrics?.toLocaleString() || 'TBD'} Price With Fabric${style?.priceWithoutFabrics?.toLocaleString() || 'TBD'}\n` +
+      `💰 Price (${priceType}): ₦${priceValue}\n` +
       `⏰ Delivery: ${style?.deliveryTime || '7-14 days'}\n` +
       `🔗 View Style: ${currentUrl}\n\n` +
-      `How much will it cost to get this dress and how many days will it take to be delivered?`
+      `I ${hasFabric ? "don't have" : "have"} my own fabric. How much will it cost and how many days will delivery take?`
     );
     
     const whatsappUrl = `https://wa.me/2348032205341?text=${message}`;
     window.open(whatsappUrl, '_blank');
+  };
+
+  // Price Toggle Component
+  const PriceToggleSection = () => {
+    if (!style) return null;
+
+    const showWithFabric = hasFabric;
+    const priceValue = showWithFabric ? style.priceWithFabrics : style.priceWithoutFabrics;
+    const priceTitle = showWithFabric ? "Price (With Fabric)" : "Price (Bring Your Fabric)";
+    const priceDescription = showWithFabric 
+      ? "Complete package includes fabric + tailoring"
+      : "Tailoring cost only. You provide the fabric";
+
+    return (
+      <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 space-y-6">
+        {/* Price Display */}
+        <div className="flex items-center gap-4">
+          <div className="flex-1">
+            <div className="flex items-center justify-between mb-2">
+              <p className="text-lg font-semibold text-gray-800">{priceTitle}</p>
+              {priceValue ? (
+                <p className="text-3xl md:text-4xl font-bold text-red-900">
+                  ₦{priceValue.toLocaleString()}
+                </p>
+              ) : (
+                <p className="text-xl font-bold text-gray-500">Price on request</p>
+              )}
+            </div>
+            <p className="text-sm text-gray-600 mb-3">{priceDescription}</p>
+            
+            {/* Toggle Button */}
+            <button
+              onClick={() => setHasFabric(!hasFabric)}
+              className="inline-flex items-center gap-3 px-6 py-3 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all duration-300 group"
+              aria-label={`Switch to ${hasFabric ? 'bring your own fabric' : 'full package with fabric'} pricing`}
+            >
+              <div className="relative">
+                {hasFabric ? (
+                  <Package className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <PackageCheck className="w-5 h-5 text-green-600" />
+                )}
+              </div>
+              <span className="font-medium text-gray-800">
+                {hasFabric ? 'Have fabric?' : "Don't have fabric?"}
+              </span>
+              <span className="text-sm text-blue-600 font-semibold group-hover:translate-x-1 transition-transform">
+                Switch →
+              </span>
+            </button>
+          </div>
+        </div>
+
+        {/* Delivery Info */}
+        <div className="flex items-center gap-4 pt-4 border-t border-blue-100">
+          <div className="p-3 bg-white rounded-xl shadow-sm">
+            <Clock className="w-6 h-6 text-blue-600" />
+          </div>
+          <div className="flex-1">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-800">
+                  Delivery Time: <span className="text-lg font-bold text-gray-900">
+                    {style.deliveryTime} Days
+                  </span>
+                </p>
+                <p className="text-xs text-gray-500 mt-1 italic">
+                  From order confirmation • {hasFabric ? 'Includes fabric sourcing time' : 'Tailoring only'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
   };
 
   if (loading) {
@@ -161,7 +243,7 @@ export default function StyleDetailPage() {
             <img
               src={style.imageUrl}
               alt={style.title}
-              className="object-cover"
+              className="w-full h-full object-cover"
             />
             <div className="absolute top-4 right-4">
               <span className="px-4 py-2 bg-black/70 backdrop-blur-sm text-white rounded-full text-sm font-medium">
@@ -203,55 +285,15 @@ export default function StyleDetailPage() {
             <p className="text-gray-500 text-base md:text-xl leading-relaxed">{style.description}</p>
           </div>
 
-          {/* Price & Delivery Info */}
-          <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 space-y-6">
-            {style.priceWithFabrics && (
-              <div className="flex items-center gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Price </p>
-                  <p className="text-[12px] text-black italic mt-1">Cost of tailoring only. (Customer Provides Fabrics)</p>
-                  <p className="text-2xl md:text-3xl font-bold text-red-900">
-                    ₦{style.priceWithFabrics.toLocaleString()}
-
-                  </p>
-                </div>
-              </div>
-            )}
-
-      
-            {style.priceWithoutFabrics && (
-              <div className="flex items-center gap-4">
-                <div>
-                  <p className="text-sm text-gray-600 mb-1">Price </p>
-                  <p className="text-[12px] text-black italic mt-1">Cost of tailoring only. (Customer Provides Fabrics)</p>
-                  <p className="text-2xl md:text-3xl font-bold text-red-900">
-                    ₦{style.priceWithoutFabrics.toLocaleString()}
-                  </p>
-                </div>
-              </div>
-            )}
-      
-            
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-white rounded-xl shadow-sm">
-                <Clock className="w-6 h-6 text-blue-600" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-gray-800 mb-1">Delivery Time: <span className="text-md md:text-lg font-semibold text-gray-900">{style.deliveryTime} Days</span></p>
-                <p >
-                  
-                </p>
-                <p className="text-[12px] text-gray-500 mt-1 italic">From order confirmation</p>
-              </div>
-            </div>
-          </div>
+          {/* Price & Delivery Toggle Section */}
+          <PriceToggleSection />
 
           {/* Tags */}
           {style.tags && style.tags.length > 0 && (
             <div>
               <h3 className="text-lg font-semibold text-gray-900 mb-3">Style Features</h3>
               <div className="flex flex-wrap gap-2">
-                {style.tags.map((tag) => (
+                {style.tags.map((tag: string) => (
                   <span
                     key={tag}
                     className="px-4 py-2 bg-gray-100 text-gray-700 rounded-full text-sm font-medium hover:bg-gray-200 transition-colors"
@@ -263,7 +305,7 @@ export default function StyleDetailPage() {
             </div>
           )}
 
-          {/* Action Buttons */}
+          {/* WhatsApp Button */}
           <div className="space-y-4 pt-4">
             <button
               onClick={handleWhatsAppRedirect}
@@ -274,7 +316,6 @@ export default function StyleDetailPage() {
               </svg>
               Contact via WhatsApp
             </button>
-
           </div>
         </div>
       </div>

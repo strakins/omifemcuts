@@ -384,7 +384,7 @@ const EditStyleModal = ({ isOpen, onClose, style, onSave }: {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Min Price (₦)
+                        Price With Fabric (₦)
                       </label>
                       <input
                         type="number"
@@ -396,7 +396,7 @@ const EditStyleModal = ({ isOpen, onClose, style, onSave }: {
                     
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Max Price (₦)
+                        Price Without Fabric (₦)
                       </label>
                       <input
                         type="number"
