@@ -29,7 +29,6 @@ import {
   Plus,
   ChevronDown,
   ChevronUp,
-  Download,
   RefreshCw,
   Star,
 } from 'lucide-react';
@@ -95,7 +94,7 @@ const ConfirmModal = ({ isOpen, onClose, onConfirm, title, message, confirmText 
             <button
               type="button"
               onClick={onConfirm}
-              className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white ${colorClasses[confirmColor]} focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm`}
+              className={`w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 text-base font-medium text-white ${colorClasses[confirmColor as keyof typeof colorClasses]} focus:outline-none focus:ring-2 focus:ring-offset-2 sm:ml-3 sm:w-auto sm:text-sm`}
             >
               {confirmText}
             </button>
