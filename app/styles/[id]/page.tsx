@@ -4,11 +4,10 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Heart, Share2, Clock, DollarSign, Copy } from 'lucide-react';
+import { Heart, Share2, Clock} from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { FashionStyle } from '@/types';
 import toast from 'react-hot-toast';
-import Image from 'next/image';
 
 export default function StyleDetailPage() {
   const params = useParams();
@@ -17,7 +16,6 @@ export default function StyleDetailPage() {
   const [loading, setLoading] = useState(true);
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(0);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     if (params.id) {
@@ -40,6 +38,7 @@ export default function StyleDetailPage() {
       
       if (docSnap.exists()) {
         const data = docSnap.data();
+        console.log(data)
         
         // Ensure all fields are properly set
         const styleData: FashionStyle = {
@@ -48,7 +47,8 @@ export default function StyleDetailPage() {
           description: data.description || 'No description available',
           imageUrl: data.imageUrl || 'https://via.placeholder.com/600x800?text=Style+Image',
           category: data.category || 'casual',
-          priceRange: data.priceRange || undefined,
+          priceWithoutFabrics: data.priceWithoutFabrics,
+          priceWithFabrics: data.priceWithFabrics,
           deliveryTime: data.deliveryTime || '7-14 days',
           likes: Array.isArray(data.likes) ? data.likes.filter(Boolean) : [], // Filter out any null/undefined
           createdAt: data.createdAt || new Date(),
@@ -123,7 +123,7 @@ export default function StyleDetailPage() {
       `Hello OmifemCuts, I'm interested in this style:\n\n` +
       `✨ *${style?.title}* ✨\n` +
       `${style?.description}\n\n` +
-      `💰 Price Range: ₦${style?.priceRange?.min?.toLocaleString() || 'TBD'} - ₦${style?.priceRange?.max?.toLocaleString() || 'TBD'}\n` +
+      `💰 Price With Fabric: ₦${style?.priceWithFabrics?.toLocaleString() || 'TBD'} Price With Fabric${style?.priceWithoutFabrics?.toLocaleString() || 'TBD'}\n` +
       `⏰ Delivery: ${style?.deliveryTime || '7-14 days'}\n` +
       `🔗 View Style: ${currentUrl}\n\n` +
       `How much will it cost to get this dress and how many days will it take to be delivered?`
@@ -131,73 +131,6 @@ export default function StyleDetailPage() {
     
     const whatsappUrl = `https://wa.me/2348032205341?text=${message}`;
     window.open(whatsappUrl, '_blank');
-  };
-
-  const handleShare = async () => {
-    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
-    const shareText = `Check out this amazing style from OmifemCuts: ${style?.title} - ${style?.description}`;
-    
-    if (navigator.share && style) {
-      try {
-        await navigator.share({
-          title: `${style.title} - OmifemCuts`,
-          text: shareText,
-          url: currentUrl,
-        });
-        toast.success('Shared successfully!');
-      } catch (error: any) {
-        // User cancelled share or share failed
-        if (error.name !== 'AbortError') {
-          console.log('Error sharing:', error);
-        }
-      }
-    } else {
-      // Fallback for browsers that don't support Web Share API
-      try {
-        await navigator.clipboard.writeText(`${shareText}\n${currentUrl}`);
-        setCopied(true);
-        toast.success('Link copied to clipboard!');
-        
-        // Reset copied state after 3 seconds
-        setTimeout(() => setCopied(false), 3000);
-      } catch (err) {
-        // Fallback for older browsers
-        const textArea = document.createElement('textarea');
-        textArea.value = `${shareText}\n${currentUrl}`;
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        setCopied(true);
-        toast.success('Link copied to clipboard!');
-        
-        setTimeout(() => setCopied(false), 3000);
-      }
-    }
-  };
-
-  const copyLink = async () => {
-    const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
-    
-    try {
-      await navigator.clipboard.writeText(currentUrl);
-      setCopied(true);
-      toast.success('Link copied to clipboard!');
-      
-      setTimeout(() => setCopied(false), 3000);
-    } catch (err) {
-      // Fallback for older browsers
-      const textArea = document.createElement('textarea');
-      textArea.value = currentUrl;
-      document.body.appendChild(textArea);
-      textArea.select();
-      document.execCommand('copy');
-      document.body.removeChild(textArea);
-      setCopied(true);
-      toast.success('Link copied to clipboard!');
-      
-      setTimeout(() => setCopied(false), 3000);
-    }
   };
 
   if (loading) {
@@ -228,10 +161,8 @@ export default function StyleDetailPage() {
             <img
               src={style.imageUrl}
               alt={style.title}
-              fill
               className="object-cover"
               sizes="(max-width: 768px) 100vw, 50vw"
-              priority
             />
             <div className="absolute top-4 right-4">
               <span className="px-4 py-2 bg-black/70 backdrop-blur-sm text-white rounded-full text-sm font-medium">
@@ -269,23 +200,38 @@ export default function StyleDetailPage() {
         {/* Details Section */}
         <div className="space-y-8">
           <div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">{style.title}</h1>
-            <p className="text-gray-200 text-lg md:text-xl leading-relaxed">{style.description}</p>
+            <h1 className="text-4xl md:text-5xl font-bold text-black mb-4">{style.title}</h1>
+            <p className="text-gray-500 text-lg md:text-xl leading-relaxed">{style.description}</p>
           </div>
 
           {/* Price & Delivery Info */}
           <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 space-y-6">
-            {style.priceRange && (
+            {style.priceWithFabrics && (
               <div className="flex items-center gap-4">
                 <div>
-                  <p className="text-sm text-gray-600 mb-1">Price Range</p>
-                  <p className="text-2xl md:text-3xl font-bold text-gray-900">
-                    ₦{style.priceRange.min.toLocaleString()} - ₦{style.priceRange.max.toLocaleString()}
+                  <p className="text-sm text-gray-600 mb-1">Price </p>
+                  <p className="text-[12px] text-black italic mt-1">Cost of tailoring only. (Customer Provides Fabrics)</p>
+                  <p className="text-2xl md:text-3xl font-bold text-red-900">
+                    ₦{style.priceWithFabrics.toLocaleString()}
+
                   </p>
-                  <p className="text-sm text-gray-500 mt-1">Cost of tailoring and materials inclusive.</p>
                 </div>
               </div>
             )}
+
+      
+            {style.priceWithoutFabrics && (
+              <div className="flex items-center gap-4">
+                <div>
+                  <p className="text-sm text-gray-600 mb-1">Price </p>
+                  <p className="text-[12px] text-black italic mt-1">Cost of tailoring only. (Customer Provides Fabrics)</p>
+                  <p className="text-2xl md:text-3xl font-bold text-red-900">
+                    ₦{style.priceWithoutFabrics.toLocaleString()}
+                  </p>
+                </div>
+              </div>
+            )}
+      
             
             <div className="flex items-center gap-4">
               <div className="p-3 bg-white rounded-xl shadow-sm">

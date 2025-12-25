@@ -26,10 +26,8 @@ export type FashionStyle = {
   description: string;
   imageUrl: string;
   category: StyleCategory;
-  priceRange?: {
-    min: number;
-    max: number;
-  };
+  priceWithoutFabrics?: number;
+  priceWithFabrics?: number;
   deliveryTime?: string;
   likes: string[]; // array of user IDs who liked this style
   createdAt: Date;

@@ -14,8 +14,8 @@ const styleSchema = z.object({
   title: z.string().min(3, 'Title must be at least 3 characters'),
   description: z.string().min(10, 'Description must be at least 10 characters'),
   category: z.enum(['casual', 'official', 'traditional', 'party', 'native']),
-  priceMin: z.string().optional(),
-  priceMax: z.string().optional(),
+  priceWithoutFabrics: z.string().optional(),
+  priceWithFabrics: z.string().optional(),
   deliveryTime: z.string().optional(),
   tags: z.string().optional(),
 });
@@ -147,10 +147,8 @@ export default function StyleUploadForm({ onUploadComplete }: StyleUploadFormPro
         description: data.description,
         category: data.category,
         imageUrl,
-        priceRange: data.priceMin && data.priceMax ? {
-          min: parseInt(data.priceMin),
-          max: parseInt(data.priceMax),
-        } : undefined,
+        priceWithoutFabrics: data.priceWithoutFabrics,
+        priceWithFabrics : data.priceWithFabrics,
         deliveryTime: data.deliveryTime || '7-14 days',
         likes: [],
         createdAt: new Date(),
@@ -299,22 +297,22 @@ export default function StyleUploadForm({ onUploadComplete }: StyleUploadFormPro
         {/* Price Range */}
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Price Range (₦) - Optional
+            Prices (₦) 
           </label>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <input
                 type="number"
-                {...register('priceMin')}
-                placeholder="Minimum price"
+                {...register('priceWithoutFabrics')}
+                placeholder="Price Without Fabrics"
                 className="block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>
             <div>
               <input
                 type="number"
-                {...register('priceMax')}
-                placeholder="Maximum price"
+                {...register('priceWithFabrics')}
+                placeholder="Price With Fabrics"
                 className="block w-full px-3 py-2 border text-gray-700 border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               />
             </div>

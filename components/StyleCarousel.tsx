@@ -222,8 +222,8 @@ export default function StyleCarousel({ styles }: StyleCarouselProps) {
           {styles.map((style) => (
             <div
               key={style.id}
-              className="p-4"
-              style={{ width: `${140 / itemsPerView}%` }}
+              className="p-6"
+              style={{ width: `${300 / itemsPerView}%` }}
             >
               <div className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300 h-full">
                 {/* Image */}
@@ -232,9 +232,7 @@ export default function StyleCarousel({ styles }: StyleCarouselProps) {
                     <img
                       src={style.imageUrl}
                       alt={style.title}
-                      fill
                       className="object-cover hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
                     />
                     <div className="absolute top-4 left-4">
                       <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-900 rounded-full text-sm font-medium">

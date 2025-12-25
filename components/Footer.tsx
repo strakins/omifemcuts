@@ -13,7 +13,7 @@ export default function Footer() {
             <h3 className="text-2xl font-bold mb-4">
               Omifem<span className="text-blue-400">Cuts</span>
             </h3>
-            <p className="text-gray-400 mb-6">
+            <p className="text-sm md:text-base text-gray-400 mb-6">
               Premium men's fashion design and tailoring services in Nigeria. 
               Creating custom outfits that reflect your personality and style.
             </p>
@@ -147,11 +147,11 @@ export default function Footer() {
 
         {/* Copyright */}
         <div className="mt-12 pt-8 border-t border-gray-800 text-center">
-          <p className="text-gray-400">
+          <p className="text-gray-400 text-sm md:text-base">
             © {currentYear} OmifemCuts. All rights reserved.
           </p>
-          <p className="text-gray-500 text-sm mt-2">
-            Premium Tailoring Services for the Modern Nigerian Man
+          <p className="text-blue-500 italic text-[12px] mt-2">
+           <a href="https://strakins-portfolio.vercel.app/" target='_blank'> Designed & Developed by Strakins</a> 
           </p>
         </div>
       </div>
