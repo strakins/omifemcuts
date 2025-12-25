@@ -291,8 +291,8 @@ const EditStyleModal = ({ isOpen, onClose, style, onSave }: {
         description: formData.description,
         category: formData.category as any,
         deliveryTime: formData.deliveryTime,
-       priceWithFabrics: formData.priceWithFabrics,
-       priceWithoutFabrics: formData.priceWithoutFabrics,
+        priceWithFabrics: formData.priceWithFabrics ? Number(formData.priceWithFabrics) : undefined,
+        priceWithoutFabrics: formData.priceWithoutFabrics ? Number(formData.priceWithoutFabrics) : undefined,
         tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag),
         updatedAt: new Date(),
       });
