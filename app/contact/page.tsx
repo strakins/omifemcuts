@@ -19,9 +19,9 @@ type ContactFormData = z.infer<typeof contactSchema>;
 
 export default function ContactPage() {
   const [submitting, setSubmitting] = useState(false);
-   const [activeIndex, setActiveIndex] = useState(null);
+   const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
-  const toggleFAQ = (index) => {
+  const toggleFAQ = (index: number) => {
     setActiveIndex(activeIndex === index ? null : index);
   };
 
