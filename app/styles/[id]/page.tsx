@@ -146,53 +146,63 @@ export default function StyleDetailPage() {
 
     const showWithFabric = hasFabric;
     const priceValue = showWithFabric ? style.priceWithFabrics : style.priceWithoutFabrics;
-    const priceTitle = showWithFabric ? "Price (Bring Your Fabric)" : "Price (We Source the Best Fabric for You)";
+    const priceTitle = showWithFabric ? "Price (Customer provides Fabric)" : "Price (We Source the Best Fabric for You)";
     const priceDescription = showWithFabric 
-      ? "Tailoring cost only. You provide the fabric"
+      ? "Tailoring cost only."
       : "Complete package includes fabric + tailoring";
 
     return (
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 space-y-6">
         {/* Price Display */}
-        <div className="flex items-center gap-4">
-          <div className="flex-1">
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-lg font-semibold text-gray-800">{priceTitle}</p>
-              {priceValue ? (
-                <p className="text-3xl md:text-4xl font-bold text-red-900">
-                  ₦{priceValue.toLocaleString()}
-                </p>
-              ) : (
-                <p className="text-xl font-bold text-gray-500">Price on request</p>
-              )}
-            </div>
-            <p className="text-sm text-gray-600 mb-3">{priceDescription}</p>
-            
-            {/* Toggle Button */}
-            <button
-              onClick={() => setHasFabric(!hasFabric)}
-              className="inline-flex items-center gap-3 px-6 py-3 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all duration-300 group"
-              aria-label={`Switch to ${hasFabric ? 'bring your own fabric' : 'full package with fabric'} pricing`}
-            >
-              <div className="relative">
-                {hasFabric ? (
-                  <Package className="w-5 h-5 text-blue-600" />
-                ) : (
-                  <PackageCheck className="w-5 h-5 text-green-600" />
-                )}
-              </div>
-              <span className="font-medium text-gray-800">
-                {hasFabric ? 'Have fabric?' : "Don't have fabric?"}
-              </span>
-              <span className="text-sm text-blue-600 font-semibold group-hover:translate-x-1 transition-transform">
-                Switch →
-              </span>
-            </button>
-          </div>
-        </div>
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-6">
+  <div className="flex-1 w-full">
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+      <p className="text-base sm:text-lg font-semibold text-gray-800 text-center sm:text-left">
+        {priceTitle}
+      </p>
+      {priceValue ? (
+        <p className="text-2xl xs:text-3xl sm:text-4xl font-bold text-red-900 text-center sm:text-right">
+          ₦{priceValue.toLocaleString('en-NG')}
+        </p>
+      ) : (
+        <p className="text-lg sm:text-xl font-bold text-gray-500 text-center sm:text-right">
+          Price on request
+        </p>
+      )}
+    </div>
+    
+    <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-3 text-center sm:text-left">
+      {priceDescription}
+    </p>
+    
+    {/* Toggle Button - Improved for mobile */}
+    <button
+      onClick={() => setHasFabric(!hasFabric)}
+      className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-2 sm:gap-3 px-4 sm:px-6 py-3 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all duration-300 group active:scale-[0.98]"
+      aria-label={`Switch to ${hasFabric ? 'bring your own fabric' : 'full package with fabric'} pricing`}
+    >
+      <div className="flex-shrink-0">
+        {hasFabric ? (
+          <Package className="w-5 h-5 text-blue-600" />
+        ) : (
+          <PackageCheck className="w-5 h-5 text-green-600" />
+        )}
+      </div>
+      <span className="font-medium text-gray-800 text-sm sm:text-base">
+        {hasFabric ? "No fabric?" : "Have fabric?"}
+      </span>
+      <span className="hidden xs:inline text-sm text-blue-600 font-semibold group-hover:translate-x-1 transition-transform ml-auto sm:ml-0">
+        Switch →
+      </span>
+      <span className="xs:hidden text-sm text-blue-600 font-semibold">
+        →
+      </span>
+    </button>
+  </div>
+</div>
 
         {/* Delivery Info */}
-        <div className="flex items-center gap-4 pt-4 border-t border-blue-100">
+        <div className="flex items-center gap-4 md:pt-4 border-t border-blue-100">
           <div className="p-3 bg-white rounded-xl shadow-sm">
             <Clock className="w-6 h-6 text-blue-600" />
           </div>
@@ -200,7 +210,7 @@ export default function StyleDetailPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-semibold text-gray-800">
-                  Delivery Time: <span className="text-lg font-bold text-gray-900">
+                  Delivery Time: <span className="md:text-lg font-bold text-gray-900">
                     {style.deliveryTime} Days
                   </span>
                 </p>

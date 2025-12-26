@@ -46,7 +46,7 @@ export default function Footer() {
           </div>
 
           {/* Quick Links */}
-          <div>
+          <div className='mb-6 hidden md:block'>
             <h4 className="text-lg font-semibold mb-6">Quick Links</h4>
             <ul className="space-y-3">
               <li>
@@ -85,8 +85,8 @@ export default function Footer() {
           </div>
 
           {/* Services */}
-          <div>
-            <h4 className="text-lg font-semibold mb-6">Our Services</h4>
+          <div className='mb-6 hidden md:block'>
+            <h4 className="text-lg font-semibold ">Our Services</h4>
             <ul className="space-y-3">
               <li className="text-gray-400">Custom Suits</li>
               <li className="text-gray-400">Traditional Wear</li>
