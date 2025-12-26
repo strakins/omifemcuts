@@ -146,10 +146,10 @@ export default function StyleDetailPage() {
 
     const showWithFabric = hasFabric;
     const priceValue = showWithFabric ? style.priceWithFabrics : style.priceWithoutFabrics;
-    const priceTitle = showWithFabric ? "Price (With Fabric)" : "Price (Bring Your Fabric)";
+    const priceTitle = showWithFabric ? "Price (Bring Your Fabric)" : "Price (We Source the Best Fabric for You)";
     const priceDescription = showWithFabric 
-      ? "Complete package includes fabric + tailoring"
-      : "Tailoring cost only. You provide the fabric";
+      ? "Tailoring cost only. You provide the fabric"
+      : "Complete package includes fabric + tailoring";
 
     return (
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 space-y-6">
