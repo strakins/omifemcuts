@@ -1,24 +1,30 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { collection, query, getDocs, orderBy } from 'firebase/firestore';
+import { useState, useEffect, useCallback } from 'react';
+import { collection, query, getDocs, orderBy, limit, startAfter } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
-import { Search, Filter, Heart } from 'lucide-react';
+import { Search, Filter, Heart, Loader2 } from 'lucide-react';
 import { FashionStyle, StyleCategory } from '@/types';
 
 const categories: StyleCategory[] = ['casual', 'official', 'traditional', 'party', 'native'];
+const STYLES_PER_PAGE = 9;
 
 export default function StylesPage() {
   const [styles, setStyles] = useState<FashionStyle[]>([]);
   const [filteredStyles, setFilteredStyles] = useState<FashionStyle[]>([]);
+  const [displayedStyles, setDisplayedStyles] = useState<FashionStyle[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
+  const [lastVisible, setLastVisible] = useState<any>(null);
+  const [hasMore, setHasMore] = useState(true);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
-    fetchStyles();
+    fetchInitialStyles();
   }, []);
 
   useEffect(() => {
@@ -47,13 +53,18 @@ export default function StylesPage() {
     }
 
     setFilteredStyles(result);
+    setDisplayedStyles(result.slice(0, STYLES_PER_PAGE));
+    setPage(1);
+    setHasMore(result.length > STYLES_PER_PAGE);
   }, [styles, selectedCategory, searchQuery, sortBy]);
 
-  const fetchStyles = async () => {
+  const fetchInitialStyles = async () => {
     try {
+      setLoading(true);
       const q = query(
         collection(db, 'styles'),
-        orderBy('createdAt', 'desc')
+        orderBy('createdAt', 'desc'),
+        limit(STYLES_PER_PAGE * 2) // Fetch slightly more initially
       );
       const snapshot = await getDocs(q);
       const stylesData = snapshot.docs.map(doc => ({
@@ -61,14 +72,91 @@ export default function StylesPage() {
         ...doc.data()
       })) as FashionStyle[];
       
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
       setStyles(stylesData);
       setFilteredStyles(stylesData);
+      setDisplayedStyles(stylesData.slice(0, STYLES_PER_PAGE));
+      setLastVisible(lastDoc);
+      setHasMore(stylesData.length >= STYLES_PER_PAGE);
     } catch (error) {
       console.error('Error fetching styles:', error);
     } finally {
       setLoading(false);
     }
   };
+
+  const loadMoreStyles = useCallback(async () => {
+    if (!hasMore || loadingMore) return;
+
+    try {
+      setLoadingMore(true);
+      
+      // If we're filtering locally, just load more from filtered styles
+      if (selectedCategory !== 'all' || searchQuery) {
+        const nextPage = page + 1;
+        const startIndex = (nextPage - 1) * STYLES_PER_PAGE;
+        const endIndex = startIndex + STYLES_PER_PAGE;
+        
+        if (startIndex >= filteredStyles.length) {
+          setHasMore(false);
+          return;
+        }
+        
+        const newStyles = filteredStyles.slice(startIndex, endIndex);
+        setDisplayedStyles(prev => [...prev, ...newStyles]);
+        setPage(nextPage);
+        setHasMore(endIndex < filteredStyles.length);
+        return;
+      }
+
+      // If no filters, fetch from Firestore with pagination
+      const nextStylesQuery = query(
+        collection(db, 'styles'),
+        orderBy('createdAt', 'desc'),
+        startAfter(lastVisible),
+        limit(STYLES_PER_PAGE)
+      );
+
+      const snapshot = await getDocs(nextStylesQuery);
+      
+      if (snapshot.empty) {
+        setHasMore(false);
+        return;
+      }
+
+      const newStyles = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as FashionStyle[];
+
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      
+      setStyles(prev => [...prev, ...newStyles]);
+      setFilteredStyles(prev => [...prev, ...newStyles]);
+      setDisplayedStyles(prev => [...prev, ...newStyles]);
+      setLastVisible(lastDoc);
+      setHasMore(newStyles.length === STYLES_PER_PAGE);
+      setPage(prev => prev + 1);
+    } catch (error) {
+      console.error('Error loading more styles:', error);
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [hasMore, loadingMore, selectedCategory, searchQuery, filteredStyles, page, lastVisible]);
+
+  // Infinite scroll handler
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
+        if (!loadingMore && hasMore) {
+          loadMoreStyles();
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [loadingMore, hasMore, loadMoreStyles]);
 
   if (loading) {
     return (
@@ -108,7 +196,7 @@ export default function StylesPage() {
           {/* Filters */}
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
             {/* Category Filter */}
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 justify-center md:justify-start">
               <button
                 onClick={() => setSelectedCategory('all')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
@@ -136,12 +224,12 @@ export default function StylesPage() {
             </div>
 
             {/* Sort Filter */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 justify-center md:justify-end">
               <Filter className="w-5 h-5 text-gray-500" />
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as 'newest' | 'popular')}
-                className="px-4 py-2 border-0 text-white  bg-blue-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="px-4 py-2 border-0 text-white bg-blue-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="newest">Newest First</option>
                 <option value="popular">Most Popular</option>
@@ -150,88 +238,132 @@ export default function StylesPage() {
           </div>
         </div>
 
+        {/* Styles Count */}
+        <div className="mb-6 text-center md:text-left">
+          <p className="text-gray-600">
+            Showing <span className="font-semibold">{displayedStyles.length}</span> of{' '}
+            <span className="font-semibold">{filteredStyles.length}</span> styles
+          </p>
+        </div>
+
         {/* Styles Grid */}
-        {filteredStyles.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-14">
-            {filteredStyles.map((style) => (
-              <div
-                key={style.id}
-                className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
-              >
-                {/* Image */}
-                <Link href={`/styles/${style.id}`}>
-                  <div className="relative h-64 overflow-hidden">
-                    <img
-                      src={style.imageUrl}
-                      alt={style.title}
-                      className="object-cover hover:scale-105 transition-transform duration-300"
-                      
-                    />
-                    <div className="absolute top-4 left-4">
-                      <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-900 rounded-full text-sm font-medium">
-                        {style.category}
-                      </span>
-                    </div>
-                    <div className="absolute top-4 right-4 flex items-center gap-1 px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full">
-                      <Heart className="w-4 h-4 text-white" />
-                      <span className="text-white text-sm">{style.likes.length}</span>
-                    </div>
-                  </div>
-                </Link>
-
-                {/* Content */}
-                <div className="p-6">
+        {displayedStyles.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-14">
+              {displayedStyles.map((style) => (
+                <div
+                  key={style.id}
+                  className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-shadow duration-300"
+                >
+                  {/* Image */}
                   <Link href={`/styles/${style.id}`}>
-                    <h3 className="text-xl font-bold text-gray-900 mb-2 hover:text-blue-600 transition-colors">
-                      {style.title}
-                    </h3>
+                    <div className="relative h-64 overflow-hidden">
+                      <img
+                        src={style.imageUrl}
+                        alt={style.title}
+                        className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute top-4 left-4">
+                        <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-900 rounded-full text-sm font-medium">
+                          {style.category}
+                        </span>
+                      </div>
+                      <div className="absolute top-4 right-4 flex items-center gap-1 px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full">
+                        <Heart className="w-4 h-4 text-white" />
+                        <span className="text-white text-sm">{style.likes.length}</span>
+                      </div>
+                    </div>
                   </Link>
-                  
-                  <p className="text-gray-600 mb-4 line-clamp-2">
-                    {style.description}
-                  </p>
 
-                  {/* Price Range */}
-                  {style.priceWithFabrics && (
-                    <div className="mb-4">
-                      <p className="text-lg font-bold text-gray-900">
-                        ₦{style.priceWithFabrics.toLocaleString()}
-                      </p>
-                    </div>
-                  )}
-
-                  {/* Tags */}
-                  {style.tags && style.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      {style.tags.slice(0, 3).map((tag) => (
-                        <span
-                          key={tag}
-                          className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                      {style.tags.length > 3 && (
-                        <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
-                          +{style.tags.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex items-center gap-3">
-                    <Link
-                      href={`/styles/${style.id}`}
-                      className="flex-1 text-center py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                    >
-                      View Details
+                  {/* Content */}
+                  <div className="p-6">
+                    <Link href={`/styles/${style.id}`}>
+                      <h3 className="text-xl font-bold text-gray-900 mb-2 hover:text-blue-600 transition-colors">
+                        {style.title}
+                      </h3>
                     </Link>
+                    
+                    <p className="text-gray-600 mb-4 line-clamp-2">
+                      {style.description}
+                    </p>
+
+                    {/* Price Range */}
+                    {style.priceWithFabrics && (
+                      <div className="mb-4">
+                        <p className="text-lg font-bold text-gray-900">
+                          ₦{style.priceWithFabrics.toLocaleString('en-US')}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Tags */}
+                    {style.tags && style.tags.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-6">
+                        {style.tags.slice(0, 3).map((tag) => (
+                          <span
+                            key={tag}
+                            className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {style.tags.length > 3 && (
+                          <span className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm">
+                            +{style.tags.length - 3}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-3">
+                      <Link
+                        href={`/styles/${style.id}`}
+                        className="flex-1 text-center py-2 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+                      >
+                        View Details
+                      </Link>
+                    </div>
                   </div>
                 </div>
+              ))}
+            </div>
+
+            {/* Load More Button */}
+            {hasMore && (
+              <div className="mt-12 text-center">
+                <button
+                  onClick={loadMoreStyles}
+                  disabled={loadingMore}
+                  className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loadingMore ? (
+                    <>
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      Loading...
+                    </>
+                  ) : (
+                    'Load More Styles'
+                  )}
+                </button>
+                <p className="text-gray-500 text-sm mt-2">
+                  Scroll down or click to load more
+                </p>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* No More Results */}
+            {!hasMore && displayedStyles.length > 0 && (
+              <div className="mt-12 text-center py-8">
+                <div className="inline-flex items-center gap-2 text-gray-500">
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  <span className="text-lg font-medium">You've seen all {filteredStyles.length} styles!</span>
+                </div>
+              </div>
+            )}
+          </>
         ) : (
           <div className="text-center py-16">
             <div className="text-gray-400 mb-4">
@@ -243,6 +375,17 @@ export default function StylesPage() {
             <p className="text-gray-600">
               {searchQuery ? 'Try a different search term' : 'Check back soon for new styles!'}
             </p>
+            {(selectedCategory !== 'all' || searchQuery) && (
+              <button
+                onClick={() => {
+                  setSelectedCategory('all');
+                  setSearchQuery('');
+                }}
+                className="mt-4 px-6 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+              >
+                Clear Filters
+              </button>
+            )}
           </div>
         )}
 

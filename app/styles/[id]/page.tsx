@@ -1,28 +1,38 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { doc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useState, useEffect, useCallback } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { doc, getDoc, updateDoc, arrayUnion, arrayRemove, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
-import { Heart, Share2, Clock, Package, PackageCheck } from 'lucide-react';
+import { Heart, Share2, Clock, Package, PackageCheck, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/components/AuthProvider';
 import { FashionStyle } from '@/types';
 import toast from 'react-hot-toast';
+import Link from 'next/link';
 
 export default function StyleDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const { user } = useAuth();
   const [style, setStyle] = useState<FashionStyle | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const [recommendedStyles, setRecommendedStyles] = useState<FashionStyle[]>([]);
+  const [loadingRecommended, setLoadingRecommended] = useState<boolean>(false);
   const [liked, setLiked] = useState<boolean>(false);
   const [likesCount, setLikesCount] = useState<number>(0);
-  const [hasFabric, setHasFabric] = useState<boolean>(true); // Toggle state
+  const [hasFabric, setHasFabric] = useState<boolean>(true);
 
   useEffect(() => {
     if (params.id) {
       fetchStyle();
     }
   }, [params.id]);
+
+  useEffect(() => {
+    if (style) {
+      fetchRecommendedStyles();
+    }
+  }, [style]);
 
   useEffect(() => {
     if (user && style && user.id) {
@@ -40,7 +50,6 @@ export default function StyleDetailPage() {
       if (docSnap.exists()) {
         const data = docSnap.data();
         
-        // Ensure all fields are properly set
         const styleData: FashionStyle = {
           id: docSnap.id,
           title: data.title || 'Untitled Style',
@@ -70,6 +79,56 @@ export default function StyleDetailPage() {
     }
   };
 
+  const fetchRecommendedStyles = useCallback(async () => {
+    if (!style) return;
+
+    try {
+      setLoadingRecommended(true);
+      
+      // Fetch styles with same category first (excluding current style)
+      let recommendedQuery = query(
+        collection(db, 'styles'),
+        where('category', '==', style.category),
+        limit(6) // Fetch more to filter out current
+      );
+      
+      const snapshot = await getDocs(recommendedQuery);
+      let recommended = snapshot.docs
+        .map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        } as FashionStyle))
+        .filter(s => s.id !== style.id); // Exclude current style
+
+      // If we don't have enough same-category styles, fetch most liked styles
+      if (recommended.length < 3) {
+        const popularQuery = query(
+          collection(db, 'styles'),
+          limit(6)
+        );
+        const popularSnapshot = await getDocs(popularQuery);
+        const popular = popularSnapshot.docs
+          .map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          } as FashionStyle))
+          .filter(s => s.id !== style.id && !recommended.find(r => r.id === s.id));
+
+        // Combine and deduplicate
+        recommended = [...recommended, ...popular];
+      }
+
+      // Sort by likes and take first 3
+      recommended.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
+      setRecommendedStyles(recommended.slice(0, 3));
+    } catch (error) {
+      console.error('Error fetching recommended styles:', error);
+      toast.error('Failed to load recommendations');
+    } finally {
+      setLoadingRecommended(false);
+    }
+  }, [style]);
+
   const handleLike = async (): Promise<void> => {
     if (!user || !user.id) {
       toast.error('Please login to like styles');
@@ -82,28 +141,24 @@ export default function StyleDetailPage() {
       const styleRef = doc(db, 'styles', style.id);
       
       if (liked) {
-        // Remove like
         await updateDoc(styleRef, {
           likes: arrayRemove(user.id)
         });
         setLiked(false);
         setLikesCount(prev => prev - 1);
         
-        // Update local state
         setStyle(prev => prev ? {
           ...prev,
           likes: prev.likes.filter(uid => uid !== user.id)
         } : null);
         toast.success('Removed from likes');
       } else {
-        // Add like
         await updateDoc(styleRef, {
           likes: arrayUnion(user.id)
         });
         setLiked(true);
         setLikesCount(prev => prev + 1);
         
-        // Update local state
         setStyle(prev => prev ? {
           ...prev,
           likes: [...prev.likes, user.id]
@@ -119,28 +174,26 @@ export default function StyleDetailPage() {
   const handleWhatsAppRedirect = (): void => {
     const currentUrl = typeof window !== 'undefined' ? window.location.href : '';
     
-    // Determine which price to show based on toggle
     const priceValue = hasFabric 
-      ? (style?.priceWithFabrics?.toLocaleString() || 'TBD')
-      : (style?.priceWithoutFabrics?.toLocaleString() || 'TBD');
+      ? (style?.priceWithFabrics?.toLocaleString('en-NG') || 'TBD')
+      : (style?.priceWithoutFabrics?.toLocaleString('en-NG') || 'TBD');
     
     const priceType = hasFabric ? 'with fabric included' : 'with your own fabric';
     
     const message = encodeURIComponent(
       `Hello OmifemCuts, I'm interested in this style:\n\n` +
-      `✨ *${style?.title}* ✨\n` +
+      `*${style?.title}*\n` +
       `${style?.description}\n\n` +
       `💰 Price (${priceType}): ₦${priceValue}\n` +
-      `⏰ Delivery: ${style?.deliveryTime || '7-14 days'}\n` +
+      `⏰ Delivery: ${style?.deliveryTime || '7-14 days'} days\n` +
       `🔗 View Style: ${currentUrl}\n\n` +
-      `I ${hasFabric ? "don't have" : "have"} my own fabric. How much will it cost and how many days will delivery take?`
+      `I ${hasFabric ? "have" : " don't have"} my own fabric. How much will it cost and how many days will delivery take?`
     );
     
     const whatsappUrl = `https://wa.me/2348032205341?text=${message}`;
     window.open(whatsappUrl, '_blank');
   };
 
-  // Price Toggle Component
   const PriceToggleSection = () => {
     if (!style) return null;
 
@@ -153,55 +206,52 @@ export default function StyleDetailPage() {
 
     return (
       <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-8 space-y-6">
-        {/* Price Display */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-6">
-  <div className="flex-1 w-full">
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
-      <p className="text-base sm:text-lg font-semibold text-gray-800 text-center sm:text-left">
-        {priceTitle}
-      </p>
-      {priceValue ? (
-        <p className="text-2xl xs:text-3xl sm:text-4xl font-bold text-red-900 text-center sm:text-right">
-          ₦{priceValue.toLocaleString('en-NG')}
-        </p>
-      ) : (
-        <p className="text-lg sm:text-xl font-bold text-gray-500 text-center sm:text-right">
-          Price on request
-        </p>
-      )}
-    </div>
-    
-    <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-3 text-center sm:text-left">
-      {priceDescription}
-    </p>
-    
-    {/* Toggle Button - Improved for mobile */}
-    <button
-      onClick={() => setHasFabric(!hasFabric)}
-      className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-2 sm:gap-3 px-4 sm:px-6 py-3 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all duration-300 group active:scale-[0.98]"
-      aria-label={`Switch to ${hasFabric ? 'bring your own fabric' : 'full package with fabric'} pricing`}
-    >
-      <div className="flex-shrink-0">
-        {hasFabric ? (
-          <Package className="w-5 h-5 text-blue-600" />
-        ) : (
-          <PackageCheck className="w-5 h-5 text-green-600" />
-        )}
-      </div>
-      <span className="font-medium text-gray-800 text-sm sm:text-base">
-        {hasFabric ? "No fabric?" : "Have fabric?"}
-      </span>
-      <span className="hidden xs:inline text-sm text-blue-600 font-semibold group-hover:translate-x-1 transition-transform ml-auto sm:ml-0">
-        Switch →
-      </span>
-      <span className="xs:hidden text-sm text-blue-600 font-semibold">
-        →
-      </span>
-    </button>
-  </div>
-</div>
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 sm:gap-6">
+          <div className="flex-1 w-full">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 sm:mb-4 gap-2">
+              <p className="text-base sm:text-lg font-semibold text-gray-800 text-center sm:text-left">
+                {priceTitle}
+              </p>
+              {priceValue ? (
+                <p className="text-2xl xs:text-3xl sm:text-4xl font-bold text-red-900 text-center sm:text-right">
+                  ₦{priceValue.toLocaleString('en-NG')}
+                </p>
+              ) : (
+                <p className="text-lg sm:text-xl font-bold text-gray-500 text-center sm:text-right">
+                  Price on request
+                </p>
+              )}
+            </div>
+            
+            <p className="text-xs sm:text-sm text-gray-600 mb-4 sm:mb-3 text-center sm:text-left">
+              {priceDescription}
+            </p>
+            
+            <button
+              onClick={() => setHasFabric(!hasFabric)}
+              className="w-full sm:w-auto inline-flex items-center justify-center sm:justify-start gap-2 sm:gap-3 px-4 sm:px-6 py-3 bg-white border border-blue-200 rounded-xl hover:bg-blue-50 transition-all duration-300 group active:scale-[0.98]"
+              aria-label={`Switch to ${hasFabric ? 'bring your own fabric' : 'full package with fabric'} pricing`}
+            >
+              <div className="flex-shrink-0">
+                {hasFabric ? (
+                  <Package className="w-5 h-5 text-blue-600" />
+                ) : (
+                  <PackageCheck className="w-5 h-5 text-green-600" />
+                )}
+              </div>
+              <span className="font-medium text-gray-800 text-sm sm:text-base">
+                {hasFabric ? "No fabric?" : "Have fabric?"}
+              </span>
+              <span className="hidden xs:inline text-sm text-blue-600 font-semibold group-hover:translate-x-1 transition-transform ml-auto sm:ml-0">
+                Switch →
+              </span>
+              <span className="xs:hidden text-sm text-blue-600 font-semibold">
+                →
+              </span>
+            </button>
+          </div>
+        </div>
 
-        {/* Delivery Info */}
         <div className="flex items-center gap-4 md:pt-4 border-t border-blue-100">
           <div className="p-3 bg-white rounded-xl shadow-sm">
             <Clock className="w-6 h-6 text-blue-600" />
@@ -225,6 +275,92 @@ export default function StyleDetailPage() {
     );
   };
 
+  const RecommendedStylesSection = () => {
+    if (loadingRecommended) {
+      return (
+        <div className="py-8">
+          <div className="flex items-center justify-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            <span className="ml-3 text-gray-600">Loading recommendations...</span>
+          </div>
+        </div>
+      );
+    }
+
+    if (recommendedStyles.length === 0) {
+      return null;
+    }
+
+    return (
+      <div className="mt-16 pt-8 border-t border-gray-200">
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">You Might Also Like</h2>
+            <p className="text-gray-600 mt-2">Explore more {style?.category} styles you might love</p>
+          </div>
+          <Link 
+            href="/styles" 
+            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
+          >
+            View All
+            <ArrowRight className="w-5 h-5" />
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {recommendedStyles.map((recommendedStyle) => (
+            <div
+              key={recommendedStyle.id}
+              className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+            >
+              <Link href={`/styles/${recommendedStyle.id}`}>
+                <div className="relative h-64 overflow-hidden">
+                  <img
+                    src={recommendedStyle.imageUrl}
+                    alt={recommendedStyle.title}
+                    className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
+                  />
+                  <div className="absolute top-3 left-3">
+                    <span className="px-2 py-1 bg-white/90 backdrop-blur-sm text-gray-900 rounded-full text-xs font-medium">
+                      {recommendedStyle.category}
+                    </span>
+                  </div>
+                  {recommendedStyle.likes && recommendedStyle.likes.length > 0 && (
+                    <div className="absolute top-3 right-3 flex items-center gap-1 px-2 py-1 bg-black/50 backdrop-blur-sm rounded-full">
+                      <Heart className="w-3 h-3 text-white" />
+                      <span className="text-white text-xs">{recommendedStyle.likes.length}</span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 mb-2 line-clamp-1 hover:text-blue-600 transition-colors">
+                    {recommendedStyle.title}
+                  </h3>
+                  
+                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                    {recommendedStyle.description}
+                  </p>
+
+                  {recommendedStyle.priceWithFabrics && (
+                    <div className="flex items-center justify-between mt-4">
+                      <p className="font-bold text-gray-900">
+                        ₦{recommendedStyle.priceWithFabrics.toLocaleString('en-NG')}
+                      </p>
+                      <span className="text-xs text-gray-500">
+                        {recommendedStyle.deliveryTime || '7-14'} days
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </Link>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -239,6 +375,12 @@ export default function StyleDetailPage() {
         <div className="text-center">
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Style Not Found</h2>
           <p className="text-gray-600">The requested style could not be found.</p>
+          <Link 
+            href="/styles" 
+            className="inline-block mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Browse All Styles
+          </Link>
         </div>
       </div>
     );
@@ -329,6 +471,9 @@ export default function StyleDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Recommended Styles Section */}
+      <RecommendedStylesSection />
     </div>
   );
 }
