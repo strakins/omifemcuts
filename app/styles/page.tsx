@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { collection, query, getDocs, orderBy, limit, startAfter } from 'firebase/firestore';
 import { db } from '@/lib/firebase';
 import Link from 'next/link';
@@ -8,7 +8,7 @@ import { Search, Filter, Heart, Loader2 } from 'lucide-react';
 import { FashionStyle, StyleCategory } from '@/types';
 
 const categories: StyleCategory[] = ['casual', 'official', 'traditional', 'party', 'native'];
-const STYLES_PER_PAGE = 9;
+const STYLES_PER_PAGE = 9; // Optimal for 3-column grid
 
 export default function StylesPage() {
   const [styles, setStyles] = useState<FashionStyle[]>([]);
@@ -16,17 +16,23 @@ export default function StylesPage() {
   const [displayedStyles, setDisplayedStyles] = useState<FashionStyle[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'newest' | 'popular'>('newest');
   const [lastVisible, setLastVisible] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(true);
-  const [page, setPage] = useState(1);
+  const [pageNumber, setPageNumber] = useState(1);
+  
+  const observerRef = useRef<IntersectionObserver | null>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const stylesContainerRef = useRef<HTMLDivElement>(null);
 
+  // Fetch initial styles
   useEffect(() => {
     fetchInitialStyles();
   }, []);
 
+  // Filter and sort logic
   useEffect(() => {
     let result = [...styles];
 
@@ -41,7 +47,7 @@ export default function StylesPage() {
       result = result.filter(style =>
         style.title.toLowerCase().includes(query) ||
         style.description.toLowerCase().includes(query) ||
-        style.tags.some(tag => tag.toLowerCase().includes(query))
+        style.tags?.some(tag => tag.toLowerCase().includes(query))
       );
     }
 
@@ -49,14 +55,43 @@ export default function StylesPage() {
     if (sortBy === 'newest') {
       result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     } else if (sortBy === 'popular') {
-      result.sort((a, b) => b.likes.length - a.likes.length);
+      result.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
     }
 
     setFilteredStyles(result);
     setDisplayedStyles(result.slice(0, STYLES_PER_PAGE));
-    setPage(1);
+    setPageNumber(1);
     setHasMore(result.length > STYLES_PER_PAGE);
   }, [styles, selectedCategory, searchQuery, sortBy]);
+
+  // Intersection Observer setup for infinite scroll
+  useEffect(() => {
+    if (!hasMore || loadingMore) return;
+
+    observerRef.current = new IntersectionObserver(
+      (entries) => {
+        const firstEntry = entries[0];
+        if (firstEntry.isIntersecting && !loadingMore && hasMore) {
+          loadMoreStyles();
+        }
+      },
+      {
+        root: null, // viewport
+        rootMargin: '0px 0px 200px 0px', // Load 200px before reaching the end
+        threshold: 0.1,
+      }
+    );
+
+    if (sentinelRef.current) {
+      observerRef.current.observe(sentinelRef.current);
+    }
+
+    return () => {
+      if (observerRef.current) {
+        observerRef.current.disconnect();
+      }
+    };
+  }, [hasMore, loadingMore, filteredStyles, pageNumber]);
 
   const fetchInitialStyles = async () => {
     try {
@@ -64,7 +99,7 @@ export default function StylesPage() {
       const q = query(
         collection(db, 'styles'),
         orderBy('createdAt', 'desc'),
-        limit(STYLES_PER_PAGE * 2) // Fetch slightly more initially
+        limit(STYLES_PER_PAGE * 2) // Fetch 2 pages initially for better UX
       );
       const snapshot = await getDocs(q);
       const stylesData = snapshot.docs.map(doc => ({
@@ -73,90 +108,80 @@ export default function StylesPage() {
       })) as FashionStyle[];
       
       const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-      setStyles(stylesData);
-      setFilteredStyles(stylesData);
-      setDisplayedStyles(stylesData.slice(0, STYLES_PER_PAGE));
       setLastVisible(lastDoc);
-      setHasMore(stylesData.length >= STYLES_PER_PAGE);
+      setStyles(stylesData);
     } catch (error) {
-      console.error('Error fetching styles:', error);
+      console.error('Error fetching initial styles:', error);
     } finally {
       setLoading(false);
     }
   };
 
   const loadMoreStyles = useCallback(async () => {
-    if (!hasMore || loadingMore) return;
+    if (loadingMore || !hasMore) return;
 
     try {
       setLoadingMore(true);
       
-      // If we're filtering locally, just load more from filtered styles
-      if (selectedCategory !== 'all' || searchQuery) {
-        const nextPage = page + 1;
-        const startIndex = (nextPage - 1) * STYLES_PER_PAGE;
-        const endIndex = startIndex + STYLES_PER_PAGE;
+      // Simulate network delay for testing
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      const nextBatchStart = pageNumber * STYLES_PER_PAGE;
+      const nextBatchEnd = nextBatchStart + STYLES_PER_PAGE;
+      
+      if (nextBatchStart < filteredStyles.length) {
+        // Load from already filtered styles (client-side)
+        const nextStyles = filteredStyles.slice(nextBatchStart, nextBatchEnd);
+        setDisplayedStyles(prev => [...prev, ...nextStyles]);
         
-        if (startIndex >= filteredStyles.length) {
+        // Check if we have more styles to load
+        if (nextBatchEnd >= filteredStyles.length) {
+          setHasMore(false);
+        }
+      } else {
+        // Fetch more from Firestore if needed
+        const q = query(
+          collection(db, 'styles'),
+          orderBy('createdAt', 'desc'),
+          startAfter(lastVisible),
+          limit(STYLES_PER_PAGE)
+        );
+        
+        const snapshot = await getDocs(q);
+        
+        if (snapshot.empty) {
           setHasMore(false);
           return;
         }
         
-        const newStyles = filteredStyles.slice(startIndex, endIndex);
-        setDisplayedStyles(prev => [...prev, ...newStyles]);
-        setPage(nextPage);
-        setHasMore(endIndex < filteredStyles.length);
-        return;
+        const newStyles = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as FashionStyle[];
+        
+        const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+        setLastVisible(lastDoc);
+        setStyles(prev => [...prev, ...newStyles]);
       }
-
-      // If no filters, fetch from Firestore with pagination
-      const nextStylesQuery = query(
-        collection(db, 'styles'),
-        orderBy('createdAt', 'desc'),
-        startAfter(lastVisible),
-        limit(STYLES_PER_PAGE)
-      );
-
-      const snapshot = await getDocs(nextStylesQuery);
       
-      if (snapshot.empty) {
-        setHasMore(false);
-        return;
-      }
-
-      const newStyles = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      })) as FashionStyle[];
-
-      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
-      
-      setStyles(prev => [...prev, ...newStyles]);
-      setFilteredStyles(prev => [...prev, ...newStyles]);
-      setDisplayedStyles(prev => [...prev, ...newStyles]);
-      setLastVisible(lastDoc);
-      setHasMore(newStyles.length === STYLES_PER_PAGE);
-      setPage(prev => prev + 1);
+      setPageNumber(prev => prev + 1);
     } catch (error) {
       console.error('Error loading more styles:', error);
     } finally {
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, selectedCategory, searchQuery, filteredStyles, page, lastVisible]);
+  }, [loadingMore, hasMore, pageNumber, filteredStyles, lastVisible]);
 
-  // Infinite scroll handler
-  useEffect(() => {
-    const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop >= document.documentElement.offsetHeight - 100) {
-        if (!loadingMore && hasMore) {
-          loadMoreStyles();
-        }
-      }
-    };
+  // Handle filter changes
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+    // Scroll to top when filter changes
+    stylesContainerRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadingMore, hasMore, loadMoreStyles]);
+  const handleSearchChange = (value: string) => {
+    setSearchQuery(value);
+  };
 
   if (loading) {
     return (
@@ -167,7 +192,7 @@ export default function StylesPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-6 md:py-12">
+    <div className="min-h-screen bg-gray-50 py-6 md:py-12" ref={stylesContainerRef}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <div className="text-center mb-5 md:mb-12">
@@ -188,7 +213,7 @@ export default function StylesPage() {
               type="text"
               placeholder="Search styles by name, description, or tags..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchChange(e.target.value)}
               className="w-full pl-12 pr-4 py-3 text-black border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             />
           </div>
@@ -198,7 +223,7 @@ export default function StylesPage() {
             {/* Category Filter */}
             <div className="flex flex-wrap gap-2 justify-center md:justify-start">
               <button
-                onClick={() => setSelectedCategory('all')}
+                onClick={() => handleCategoryChange('all')}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   selectedCategory === 'all'
                     ? 'bg-blue-600 text-white'
@@ -211,7 +236,7 @@ export default function StylesPage() {
               {categories.map((category) => (
                 <button
                   key={category}
-                  onClick={() => setSelectedCategory(category)}
+                  onClick={() => handleCategoryChange(category)}
                   className={`px-4 py-2 rounded-lg font-medium transition-colors capitalize ${
                     selectedCategory === category
                       ? 'bg-blue-600 text-white'
@@ -238,13 +263,6 @@ export default function StylesPage() {
           </div>
         </div>
 
-        {/* Styles Count */}
-        <div className="mb-6 text-center md:text-left">
-          <p className="text-gray-600">
-            Showing <span className="font-semibold">{displayedStyles.length}</span> of{' '}
-            <span className="font-semibold">{filteredStyles.length}</span> styles
-          </p>
-        </div>
 
         {/* Styles Grid */}
         {displayedStyles.length > 0 ? (
@@ -261,16 +279,12 @@ export default function StylesPage() {
                       <img
                         src={style.imageUrl}
                         alt={style.title}
+                        loading="lazy"
                         className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                       />
-                      <div className="absolute top-4 left-4">
-                        <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-900 rounded-full text-sm font-medium">
-                          {style.category}
-                        </span>
-                      </div>
                       <div className="absolute top-4 right-4 flex items-center gap-1 px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full">
                         <Heart className="w-4 h-4 text-white" />
-                        <span className="text-white text-sm">{style.likes.length}</span>
+                        <span className="text-white text-sm">{style.likes?.length || 0}</span>
                       </div>
                     </div>
                   </Link>
@@ -291,13 +305,13 @@ export default function StylesPage() {
                     {style.priceWithFabrics && (
                       <div className="mb-4">
                         <p className="text-lg font-bold text-gray-900">
-                          ₦{style.priceWithFabrics.toLocaleString('en-US')}
+                          ₦{Number(style.priceWithFabrics).toLocaleString('en-US')}
                         </p>
                       </div>
                     )}
 
                     {/* Tags */}
-                    {style.tags && style.tags.length > 0 && (
+                    {/* {style.tags && style.tags.length > 0 && (
                       <div className="flex flex-wrap gap-2 mb-6">
                         {style.tags.slice(0, 3).map((tag) => (
                           <span
@@ -313,7 +327,7 @@ export default function StylesPage() {
                           </span>
                         )}
                       </div>
-                    )}
+                    )} */}
 
                     {/* Action Buttons */}
                     <div className="flex items-center gap-3">
@@ -329,40 +343,35 @@ export default function StylesPage() {
               ))}
             </div>
 
-            {/* Load More Button */}
-            {hasMore && (
-              <div className="mt-12 text-center">
-                <button
-                  onClick={loadMoreStyles}
-                  disabled={loadingMore}
-                  className="inline-flex items-center gap-2 px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {loadingMore ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Loading...
-                    </>
-                  ) : (
-                    'Load More Styles'
-                  )}
-                </button>
-                <p className="text-gray-500 text-sm mt-2">
-                  Scroll down or click to load more
-                </p>
-              </div>
-            )}
-
-            {/* No More Results */}
-            {!hasMore && displayedStyles.length > 0 && (
-              <div className="mt-12 text-center py-8">
-                <div className="inline-flex items-center gap-2 text-gray-500">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
-                  <span className="text-lg font-medium">You've seen all {filteredStyles.length} styles!</span>
+            {/* Loading Indicator and Sentinel */}
+            <div className="mt-12 space-y-4">
+              {loadingMore && (
+                <div className="flex justify-center items-center py-4">
+                  <div className="flex items-center gap-3">
+                    <Loader2 className="w-6 h-6 animate-spin text-blue-600" />
+                    <span className="text-gray-600">Loading more styles...</span>
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+              
+              {/* Intersection Observer Sentinel */}
+              <div 
+                ref={sentinelRef} 
+                className="h-4 w-full"
+                aria-hidden="true"
+              />
+              
+              {!hasMore && displayedStyles.length > 0 && (
+                <div className="text-center py-8">
+                  <div className="inline-flex items-center gap-3 px-6 py-3 bg-gray-100 rounded-full">
+                    <svg className="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span className="text-gray-700 font-medium">All styles loaded</span>
+                  </div>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <div className="text-center py-16">
@@ -386,6 +395,18 @@ export default function StylesPage() {
                 Clear Filters
               </button>
             )}
+          </div>
+        )}
+
+        {/* Load More Button (Fallback for users without Intersection Observer) */}
+        {hasMore && !loadingMore && (
+          <div className="mt-8 text-center md:hidden"> {/* Show only on mobile as fallback */}
+            <button
+              onClick={loadMoreStyles}
+              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Load More Styles
+            </button>
           </div>
         )}
 

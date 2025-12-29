@@ -103,17 +103,17 @@ export default function Footer() {
             <div className="space-y-4">
               <div className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-blue-400 mt-1 flex-shrink-0" />
-                <p className="text-gray-400">
-                  123 Fashion Street, Victoria Island<br />
-                  Lagos, Nigeria
+                <p className="text-sm md:text-md text-gray-400">
+                  Zone B No 10 Ifelodun street woru <br />
+                  Osogbo, Nigeria
                 </p>
               </div>
               
               <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-blue-400" />
+                <Phone className=" w-5 h-5 text-blue-400" />
                 <a
                   href="tel:+2348032205341"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-sm md:text-md text-gray-400 hover:text-white transition-colors"
                 >
                   +234 803 220 5341
                 </a>
@@ -123,9 +123,9 @@ export default function Footer() {
                 <Mail className="w-5 h-5 text-blue-400" />
                 <a
                   href="mailto:info@omifemcuts.com"
-                  className="text-gray-400 hover:text-white transition-colors"
+                  className="text-sm md:text-md text-gray-400 hover:text-white transition-colors"
                 >
-                  info@omifemcuts.com
+                   omiyodej@gmail.com
                 </a>
               </div>
             </div>

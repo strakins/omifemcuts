@@ -98,9 +98,8 @@ export default function StyleDetailPage() {
           id: doc.id,
           ...doc.data()
         } as FashionStyle))
-        .filter(s => s.id !== style.id); // Exclude current style
+        .filter(s => s.id !== style.id); 
 
-      // If we don't have enough same-category styles, fetch most liked styles
       if (recommended.length < 3) {
         const popularQuery = query(
           collection(db, 'styles'),
@@ -114,11 +113,9 @@ export default function StyleDetailPage() {
           } as FashionStyle))
           .filter(s => s.id !== style.id && !recommended.find(r => r.id === s.id));
 
-        // Combine and deduplicate
         recommended = [...recommended, ...popular];
       }
 
-      // Sort by likes and take first 3
       recommended.sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0));
       setRecommendedStyles(recommended.slice(0, 3));
     } catch (error) {
@@ -198,7 +195,7 @@ export default function StyleDetailPage() {
     if (!style) return null;
 
     const showWithFabric = hasFabric;
-    const priceValue = showWithFabric ? style.priceWithFabrics : style.priceWithoutFabrics;
+    const priceValue = Number(showWithFabric ? style.priceWithFabrics : style.priceWithoutFabrics);
     const priceTitle = showWithFabric ? "Price (Customer provides Fabric)" : "Price (We Source the Best Fabric for You)";
     const priceDescription = showWithFabric 
       ? "Tailoring cost only."
@@ -295,16 +292,18 @@ export default function StyleDetailPage() {
       <div className="mt-16 pt-8 border-t border-gray-200">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">You Might Also Like</h2>
-            <p className="text-gray-600 mt-2">Explore more {style?.category} styles you might love</p>
+            <h2 className="text-xl md:text-3xl font-bold text-gray-900">You Might Also Like</h2>
+            <p className="text-sm md:text-xl text-gray-600 mt-2">Explore more {style?.category} styles you might love</p>
           </div>
-          <Link 
-            href="/styles" 
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
-          >
-            View All
-            <ArrowRight className="w-5 h-5" />
-          </Link>
+          <div className='hidden md:block'>
+            <Link 
+              href="/styles" 
+              className="flex items-center gap-2 text-blue-600 hover:text-blue-700 font-semibold"
+            >
+              View All
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -345,7 +344,7 @@ export default function StyleDetailPage() {
                   {recommendedStyle.priceWithFabrics && (
                     <div className="flex items-center justify-between mt-4">
                       <p className="font-bold text-gray-900">
-                        ₦{recommendedStyle.priceWithFabrics.toLocaleString('en-NG')}
+                        ₦{Number(recommendedStyle.priceWithFabrics).toLocaleString('en-NG')}
                       </p>
                       <span className="text-xs text-gray-500">
                         {recommendedStyle.deliveryTime || '7-14'} days
@@ -433,8 +432,8 @@ export default function StyleDetailPage() {
         {/* Details Section */}
         <div className="space-y-8">
           <div>
-            <h1 className="text-2xl md:text-5xl font-bold text-black mb-2">{style.title}</h1>
-            <p className="text-gray-500 text-base md:text-xl leading-relaxed">{style.description}</p>
+            <h1 className="text-lg md:text-3xl capitalize font-bold text-black mb-2">{style.title}</h1>
+            <p className="text-gray-500 text-sm md:text-xl leading-relaxed">{style.description}</p>
           </div>
 
           {/* Price & Delivery Toggle Section */}

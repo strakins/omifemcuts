@@ -9,7 +9,7 @@ const services = [
   {
     icon: Clock,
     title: 'Quick Turnaround',
-    description: 'Express services available with delivery times as fast as 48 hours.',
+    description: 'Express services available with delivery times as fast as 72 hours.',
   },
   {
     icon: Shield,
@@ -19,7 +19,7 @@ const services = [
   {
     icon: Truck,
     title: 'Nationwide Delivery',
-    description: 'Free delivery within Lagos. Nationwide delivery available across Nigeria.',
+    description: 'Free delivery within Osogbo. Nationwide delivery available across Nigeria and International Shipping is Available.',
   },
   {
     icon: Heart,
@@ -29,7 +29,7 @@ const services = [
   {
     icon: Star,
     title: 'After-Sales Service',
-    description: 'Free adjustments and repairs within the first 3 months of purchase.',
+    description: 'Free adjustments and repairs within the first 1 month of delivery.',
   },
 ];
 

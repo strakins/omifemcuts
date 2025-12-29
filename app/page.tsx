@@ -16,27 +16,58 @@ export default function Home() {
 
   useEffect(() => {
     fetchLatestStyles();
+    setLoading(true)
     fetchFeedbacks();
   }, []);
 
+  //   try {
+  //     const q = query(
+  //       collection(db, 'styles'),
+  //       orderBy('createdAt', 'desc'),
+  //       limit(7)
+  //     );
+  //     const snapshot = await getDocs(q);
+  //     const styles = snapshot.docs.map(doc => ({
+  //       id: doc.id,
+  //       ...doc.data()
+  //     })) as FashionStyle[];
+  //     setLatestStyles(styles);
+  //   } catch (error) {
+  //     console.error('Error fetching styles:', error);
+  //   }
+  // };
+
+  // Fisher-Yates shuffle algorithm for better randomization
+  const shuffleArray = (array: any[]) => {
+    const newArray = [...array];
+    for (let i = newArray.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+    }
+    return newArray;
+  };
+
   const fetchLatestStyles = async () => {
     try {
+      // Fetch all styles from database
       const q = query(
-        collection(db, 'styles'),
-        orderBy('createdAt', 'desc'),
-        limit(7)
+        collection(db, 'styles')
+        // Remove orderBy to get true random, but keep for consistency
       );
       const snapshot = await getDocs(q);
-      const styles = snapshot.docs.map(doc => ({
+      const allStyles = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as FashionStyle[];
-      setLatestStyles(styles);
+
+      // Shuffle using Fisher-Yates algorithm
+      const randomStyles = shuffleArray(allStyles);
+
+      setLatestStyles(randomStyles);
     } catch (error) {
       console.error('Error fetching styles:', error);
     }
   };
-
   const fetchFeedbacks = async () => {
     try {
       const q = query(
@@ -65,7 +96,10 @@ export default function Home() {
         <h2 className="text-3xl font-bold text-center mb-8 text-gray-900">
           Latest Styles
         </h2>
-        <StyleCarousel styles={latestStyles} />
+        <StyleCarousel 
+          styles={latestStyles} 
+          loading={loading}
+        />
       </section>
       
       <ServicesSection />

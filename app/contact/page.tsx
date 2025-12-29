@@ -36,7 +36,7 @@ export default function ContactPage() {
     },
     {
         question: "Can I request alterations after receiving my outfit?",
-        answer: "We offer free alterations within the first 30 days of delivery. Minor adjustments can be done within 2-3 business days."
+        answer: "No, alterations comes with fresh negotiation. Minor adjustments can be done within 2-3 business days."
     },
     {
         question: "How do I provide my measurements?",
@@ -44,7 +44,7 @@ export default function ContactPage() {
     },
     {
         question: "What payment methods do you accept?",
-        answer: "We accept bank transfers, credit/debit cards, and payment through Flutterwave. A 50% deposit is required to start production."
+        answer: "We accept bank transfers, credit/debit cards. A 50% deposit is required to validate your order."
     },
     {
         question: "Do you offer refunds or exchanges?",
@@ -85,25 +85,25 @@ export default function ContactPage() {
     {
       icon: Phone,
       title: 'Phone Number',
-      details: ['+234 803 220 5341', '+234 901 234 5678'],
+      details: ['+234 803 220 5341', '+234 805 311 7042'],
       action: 'tel:+2348032205341',
     },
     {
       icon: Mail,
       title: 'Email Address',
-      details: ['info@omifemcuts.com', 'support@omifemcuts.com'],
-      action: 'mailto:info@omifemcuts.com',
+      details: ['omiyodej@gmail.com'],
+      action: 'mailto:omiyodej@gmail.com',
     },
     {
       icon: MapPin,
       title: 'Our Location',
-      details: ['123 Fashion Street, Victoria Island', 'Lagos, Nigeria'],
-      action: 'https://maps.google.com/?q=Victoria+Island+Lagos+Nigeria',
+      details: ['Zone B No 10 Ifelodun Street Woru, Osogbo, Osun state'],
+      // action: 'https://maps.google.com/?q=Victoria+Island+Lagos+Nigeria',
     },
     {
       icon: Clock,
       title: 'Working Hours',
-      details: ['Monday - Friday: 9:00 AM - 7:00 PM', 'Saturday: 10:00 AM - 5:00 PM', 'Sunday: 12:00 PM - 4:00 PM'],
+      details: ['Monday - Friday: 9:00 AM - 7:00 PM', 'Saturday: 12:00 AM - 5:00 PM'],
     },
   ];
 
@@ -219,7 +219,6 @@ export default function ContactPage() {
 
             <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Name */}
                 <div>
                   <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
                     Full Name *
@@ -239,7 +238,6 @@ export default function ContactPage() {
                   )}
                 </div>
 
-                {/* Email */}
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
                     Email Address *
@@ -261,7 +259,6 @@ export default function ContactPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Phone */}
                 <div>
                   <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
                     Phone Number *
