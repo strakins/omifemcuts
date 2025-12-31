@@ -1,36 +1,83 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# OmifemCuts - Men's Fashion Styling Platform
 
-## Getting Started
+A modern, responsive e-commerce platform for premium men's fashion designs, featuring style browsing, detailed product views, and seamless customer communication.
 
-First, run the development server:
+![OmifemCuts Platform](https://omifemcuts.xyz)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## Features
+
+### **Style Discovery**
+- **Browse Collection**: View all available fashion styles in a responsive grid layout
+- **Smart Filtering**: Filter by categories (Casual, Official, Traditional, Party, Native)
+- **Advanced Search**: Search styles by title, description, or tags
+- **Sort Options**: Sort by newest arrivals or most popular styles
+
+### **Dynamic Pricing System**
+- **Fabric Toggle**: Switch between "with fabric" and "without fabric" pricing
+- **Real-time Updates**: Instant price changes based on fabric selection
+- **Naira Formatting**: Proper ₦ price display with comma separation
+
+### **User Engagement**
+- **Like System**: Authenticated users can like their favorite styles
+- **Real-time Updates**: Instant like count updates
+- **Recommended Styles**: AI-powered style recommendations based on preferences
+
+### **Mobile-Optimized**
+- **Fully Responsive**: Seamless experience across all devices
+- **Touch-Friendly**: Optimized for mobile interactions
+- **Fast Loading**: Skeleton loading states for better UX
+
+### 💬 **Customer Communication**
+- **WhatsApp Integration**: One-click contact with pre-filled inquiry messages
+- **Custom Design Requests**: Direct messaging for custom styling needs
+- **Quick Inquiry**: Pre-formatted messages with style details
+
+## 🛠️ Tech Stack
+
+### **Frontend**
+- **Next.js 14** - React framework with App Router
+- **TypeScript** - Type-safe development
+- **Tailwind CSS** - Utility-first styling
+- **Firebase** - Backend services (Firestore, Auth)
+
+### **UI Components**
+- **Lucide React** - Icon library
+- **React Hot Toast** - Toast notifications
+- **Custom Components** - Reusable, accessible UI elements
+
+### **Backend**
+- **Firebase Firestore** - Real-time database
+- **Firebase Authentication** - User management
+- **Firebase Security Rules** - Secure data access
+
+## 📁 Project Structure
+
+```
+omifemcuts/
+├── app/
+│   ├── styles/
+│   │   ├── page.tsx              
+│   │   └── [id]/
+│   │       └── page.tsx          
+│   └── layout.tsx                
+├── components/
+│   ├── StyleCarousel.tsx         
+│   ├── AuthProvider.tsx          
+│   └── UI/                       
+├── lib/
+│   └── firebase.ts              
+├── types/
+│   └── index.ts                 
+└── public/                      
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 🚀 Getting Started
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### **Prerequisites**
+- Node.js 18+ 
+- npm or yarn
+- Firebase account
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Installation
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Reach Out Via 090 if you encounter any error
