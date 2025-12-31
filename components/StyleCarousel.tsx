@@ -216,13 +216,7 @@ export default function StyleCarousel({ styles, loading = false }: StyleCarousel
                     alt={style.title}
                     className="w-full h-full object-cover hover:scale-105 transition-transform duration-300"
                   />
-                  {/* Category Badge */}
-                  <div className="absolute top-4 left-4">
-                    <span className="px-3 py-1 bg-white/90 backdrop-blur-sm text-gray-900 rounded-full text-sm font-medium">
-                      {style.category}
-                    </span>
-                  </div>
-                  {/* Like Count */}
+                 
                   <div className="absolute top-4 right-4 flex items-center gap-1 px-3 py-1 bg-black/50 backdrop-blur-sm rounded-full">
                     <Heart className="w-4 h-4 text-white" />
                     <span className="text-white text-sm">{style.likes?.length || 0}</span>
